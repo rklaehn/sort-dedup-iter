@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 use core::{
     cmp::{min, Ordering},
     marker::PhantomData,
@@ -8,10 +9,10 @@ use core::{
 /// returns the number of unique elements.
 ///
 /// there is an unstable library feature called slice.partition_dedup which is
-/// roughly similar: https://github.com/rust-lang/rust/issues/54279
+/// roughly similar: <https://github.com/rust-lang/rust/issues/54279>
 ///
 /// the library feature would be preferable since it is unsafe and thus has no bounds checks.
-pub fn dedup_by<T, F: Fn(&T, &T) -> bool>(d: &mut [T], same_bucket: F, keep: Keep) -> usize {
+fn dedup_by<T, F: Fn(&T, &T) -> bool>(d: &mut [T], same_bucket: F, keep: Keep) -> usize {
     if d.is_empty() {
         return 0;
     }
@@ -29,6 +30,7 @@ pub fn dedup_by<T, F: Fn(&T, &T) -> bool>(d: &mut [T], same_bucket: F, keep: Kee
     j + 1
 }
 
+/// Enum to determine what elements to keep in case of collisions
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Keep {
     /// when encountering duplicate elements, keep first
@@ -37,13 +39,17 @@ pub enum Keep {
     Last,
 }
 
-pub trait Collection<T>: DerefMut<Target = [T]> {
+/// Trait to abstract over the target collection, Vec or SmallVec
+pub trait Seq<T>: DerefMut<Target = [T]> {
+    /// create a new, empty collection with the given capacity
     fn with_capacity(capacity: usize) -> Self;
+    /// push an element to the end
     fn push(&mut self, value: T);
+    /// truncate the length
     fn truncate(&mut self, size: usize);
 }
 
-impl<T> Collection<T> for Vec<T> {
+impl<T> Seq<T> for Vec<T> {
     fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity(capacity)
     }
@@ -56,7 +62,7 @@ impl<T> Collection<T> for Vec<T> {
 }
 
 #[cfg(feature = "smallvec")]
-impl<A: smallvec::Array> Collection<A::Item> for SmallVec<A> {
+impl<A: smallvec::Array> Seq<A::Item> for smallvec::SmallVec<A> {
     fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity(capacity)
     }
@@ -90,18 +96,18 @@ struct SortAndDedup<I, T, F> {
 /// Sort and dedup an interator `I` into a collection `R`.
 ///
 /// `keep` determines whether to keep the first or the last occurrence in case of duplicates
-pub fn sort_dedup<I: Iterator, R: Collection<I::Item>>(iter: I, keep: Keep) -> R
+pub fn sort_dedup<I: Iterator, R: Seq<I::Item>>(iter: I, keep: Keep) -> R
 where
     I::Item: Ord,
 {
     sort_dedup_by(iter, keep, |a: &I::Item, b: &I::Item| a.cmp(b))
 }
 
-/// Sort and dedup an interator `I` into a collection `R`.
+/// Sort and dedup an interator `I` into a collection `R`, using a comparison fn.
 ///
 /// `keep` determines whether to keep the first or the last occurrence in case of duplicates
 /// `key` is a function that produces a key to sort and dedup by
-pub fn sort_dedup_by<I: Iterator, R: Collection<I::Item>, F>(iter: I, keep: Keep, cmp: F) -> R
+pub fn sort_dedup_by<I: Iterator, R: Seq<I::Item>, F>(iter: I, keep: Keep, cmp: F) -> R
 where
     F: Fn(&I::Item, &I::Item) -> std::cmp::Ordering,
 {
@@ -118,11 +124,11 @@ where
     agg.into_inner()
 }
 
-/// Sort and dedup an interator `I` into a collection `R`.
+/// Sort and dedup an interator `I` into a collection `R`, using a key fn.
 ///
 /// `keep` determines whether to keep the first or the last occurrence in case of duplicates
 /// `key` is a function that produces a key to sort and dedup by
-pub fn sort_dedup_by_key<I: Iterator, R: Collection<I::Item>, K: Ord, F: Fn(&I::Item) -> &K>(
+pub fn sort_dedup_by_key<I: Iterator, R: Seq<I::Item>, K: Ord, F: Fn(&I::Item) -> &K>(
     iter: I,
     keep: Keep,
     key: F,
@@ -133,7 +139,7 @@ pub fn sort_dedup_by_key<I: Iterator, R: Collection<I::Item>, K: Ord, F: Fn(&I::
 impl<I, T, F> SortAndDedup<I, T, F>
 where
     F: Fn(&T, &T) -> Ordering,
-    I: Collection<T>,
+    I: Seq<T>,
 {
     fn sort_and_dedup(&mut self) {
         if self.sorted < self.data.len() {
