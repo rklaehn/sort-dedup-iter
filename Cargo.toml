@@ -1,0 +1,21 @@
+[package]
+name = "sort-dedup-iter"
+version = "0.1.0"
+authors = ["Rüdiger Klaehn <rklaehn@protonmail.com>"]
+edition = "2021"
+description = "Sort and deduplicate from iterators into vecs"
+repository = "https://github.com/rklaehn/sort-dedup-iter"
+license = "MIT OR Apache-2.0"
+keywords = ["iterator", "vec", "smallvec", "sorting"]
+categories = ["algorithms"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+smallvec = { version = "1.7.0", optional = true }
+
+[features]
+
+[dev-dependencies]
+quickcheck = "1.0.3"
+quickcheck_macros = "1.0.0"
